@@ -24,10 +24,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(pixels)
+	getPalette(pixels, 10)
 }
 
-func getPixels(file io.Reader) ([][]Pixel, error) {
+func getPalette(pixels []Pixel, count int) {
+	quantize(pixels, count)
+}
+
+func getPixels(file io.Reader) ([]Pixel, error) {
 	img, _, err := image.Decode(file)
 
 	if err != nil {
@@ -37,13 +41,17 @@ func getPixels(file io.Reader) ([][]Pixel, error) {
 	bounds := img.Bounds()
 	width, height := bounds.Max.X, bounds.Max.Y
 
-	var pixels [][]Pixel
+	var pixels []Pixel
 	for y := 0; y < height; y++ {
-		var row []Pixel
 		for x := 0; x < width; x++ {
-			row = append(row, rgbaToPixel(img.At(x, y).RGBA()))
+			pixel := rgbaToPixel(img.At(x, y).RGBA())
+
+			if pixel.A >= 125 {
+				if !(pixel.R > 250 && pixel.G > 250 && pixel.B > 250) {
+					pixels = append(pixels, pixel)
+				}
+			}
 		}
-		pixels = append(pixels, row)
 	}
 
 	return pixels, nil
