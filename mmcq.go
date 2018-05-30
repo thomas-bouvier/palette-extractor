@@ -1,27 +1,14 @@
 package main
 
 import (
+	"container/heap"
 	"fmt"
 	"os"
 )
 
 const BITSIG = 5
 const RSHIFT = 8 - BITSIG
-
-type VBox struct {
-	r1, r2    int
-	g1, g2    int
-	b1, b2    int
-	histogram map[int]int
-}
-
-func (vbox *VBox) volume() int {
-	sub_r := vbox.r2 - vbox.r1
-	sub_g := vbox.g2 - vbox.g1
-	sub_b := vbox.b2 - vbox.b1
-
-	return (sub_r + 1) * (sub_g + 1) * (sub_b + 1)
-}
+const ITMAX = 1000
 
 func quantize(pixels []Pixel, count int) {
 	if count < 2 || count > 256 {
@@ -30,13 +17,36 @@ func quantize(pixels []Pixel, count int) {
 	}
 
 	histogram := computeHistogram(pixels)
-
 	if len(histogram) <= count {
 		fmt.Fprintf(os.Stderr, "insufficient number of levels of quantification")
 		os.Exit(1)
 	}
 
-	fmt.Print(computeVBox(pixels, histogram))
+	vbox := computeVBox(pixels, histogram)
+
+	vboxes := make(VBoxes, 1)
+	vboxes[0] = &vbox
+
+	heap.Init(&vboxes)
+
+	doQuantizeIteration(&vboxes)
+}
+
+func doQuantizeIteration(vboxes *VBoxes) {
+	it := 0
+
+	for it < ITMAX {
+		if vboxes.Len() > 0 {
+			vbox := heap.Pop(vboxes).(*VBox)
+
+			if vbox.Count() == 0 {
+				fmt.Print("test")
+				heap.Push(vboxes, vbox)
+			}
+		}
+
+		it++
+	}
 }
 
 func computeHistogram(pixels []Pixel) map[int]int {
@@ -50,19 +60,15 @@ func computeHistogram(pixels []Pixel) map[int]int {
 		} else {
 			histogram[index] = 1
 		}
-
 	}
 
 	return histogram
 }
 
 func computeVBox(pixels []Pixel, histogram map[int]int) VBox {
-	rmin := 1000000
-	rmax := 0
-	gmin := 1000000
-	gmax := 0
-	bmin := 1000000
-	bmax := 0
+	rmin, rmax := int(^uint(0)>>1), 0
+	gmin, gmax := int(^uint(0)>>1), 0
+	bmin, bmax := int(^uint(0)>>1), 0
 
 	for _, pixel := range pixels {
 		r := pixel.R >> RSHIFT
@@ -82,18 +88,4 @@ func computeVBox(pixels []Pixel, histogram map[int]int) VBox {
 
 func getColorIndex(r int, g int, b int) int {
 	return r<<(BITSIG*2) + g<<BITSIG + b
-}
-
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
 }
