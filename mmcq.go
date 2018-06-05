@@ -65,6 +65,87 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
+func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
+	if vbox.Count() == 0 {
+		return nil, nil
+	}
+
+	// only one pixel, no split
+
+	if vbox.Count() == 1 {
+		return vbox, nil
+	}
+
+	rw := vbox.r2 - vbox.r1
+	gw := vbox.g2 - vbox.g1
+	bw := vbox.b2 - vbox.b1
+
+	// finding the partial sum arrays along the selected axis
+
+	var partialSum []int
+	total := 0
+
+	switch max(max(rw, gw), bw) {
+	case rw:
+		for i := vbox.r1; i <= vbox.r2; i++ {
+			sum := 0
+
+			for j := vbox.g1; j <= vbox.g2; j++ {
+				for k := vbox.b1; k <= vbox.b2; k++ {
+					if val, ok := vbox.histogram[getColorIndex(i, j, k)]; ok {
+						sum += val
+					}
+				}
+			}
+
+			total += sum
+			partialSum[i] = total
+		}
+
+	case gw:
+		for i := vbox.g1; i <= vbox.g2; i++ {
+			sum := 0
+
+			for j := vbox.r1; j <= vbox.r2; j++ {
+				for k := vbox.b1; k <= vbox.b2; k++ {
+					if val, ok := vbox.histogram[getColorIndex(j, i, k)]; ok {
+						sum += val
+					}
+				}
+			}
+
+			total += sum
+			partialSum[i] = total
+		}
+
+	default:
+		for i := vbox.b1; i <= vbox.b2; i++ {
+			sum := 0
+
+			for j := vbox.r1; j <= vbox.r2; j++ {
+				for k := vbox.g1; k <= vbox.g2; k++ {
+					if val, ok := vbox.histogram[getColorIndex(j, k, i)]; ok {
+						sum += val
+					}
+				}
+			}
+
+			total += sum
+			partialSum[i] = total
+		}
+	}
+
+	lookAheadSum := make([]int, len(partialSum))
+
+	for i := 0; i < len(partialSum); i++ {
+		lookAheadSum[i] = total - partialSum[i]
+	}
+
+	// determining the cut planes
+
+	return nil, nil
+}
+
 func computeVBox(pixels []Pixel, histogram map[int]int) VBox {
 	rmin, rmax := int(^uint(0)>>1), 0
 	gmin, gmax := int(^uint(0)>>1), 0
