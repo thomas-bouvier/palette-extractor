@@ -3,6 +3,7 @@ package main
 import (
 	"container/heap"
 	"fmt"
+	"github.com/jinzhu/copier"
 	"os"
 )
 
@@ -65,15 +66,15 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
+func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
 	if vbox.Count() == 0 {
-		return nil, nil
+		return vbox1, vbox2, 0
 	}
 
 	// only one pixel, no split
 
 	if vbox.Count() == 1 {
-		return vbox, nil
+		return *vbox, vbox2, 1
 	}
 
 	rw := vbox.r2 - vbox.r1
@@ -85,8 +86,13 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
 	var partialSum []int
 	total := 0
 
+	dim1, dim2 := 0, 0
+	br, bg := false, false
+
 	switch max(max(rw, gw), bw) {
 	case rw:
+		br = true
+
 		for i := vbox.r1; i <= vbox.r2; i++ {
 			sum := 0
 
@@ -102,7 +108,12 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
 			partialSum[i] = total
 		}
 
+		dim1 = vbox.r1
+		dim2 = vbox.r2
+
 	case gw:
+		bg = true
+
 		for i := vbox.g1; i <= vbox.g2; i++ {
 			sum := 0
 
@@ -117,6 +128,9 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
 			total += sum
 			partialSum[i] = total
 		}
+
+		dim1 = vbox.g1
+		dim2 = vbox.g2
 
 	default:
 		for i := vbox.b1; i <= vbox.b2; i++ {
@@ -133,6 +147,9 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
 			total += sum
 			partialSum[i] = total
 		}
+
+		dim1 = vbox.b1
+		dim2 = vbox.b2
 	}
 
 	lookAheadSum := make([]int, len(partialSum))
@@ -143,7 +160,53 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (*VBox, *VBox) {
 
 	// determining the cut planes
 
-	return nil, nil
+	for i := dim1; i <= dim2; i++ {
+		if partialSum[i] > total/2 {
+			vbox1, vbox2 := VBox{}, VBox{}
+			copier.Copy(&vbox1, vbox)
+			copier.Copy(&vbox2, vbox)
+
+			l := i - dim1
+			r := dim2 - i
+			new_dim := 0
+
+			if l <= r {
+				new_dim = min(dim2-1, i+(r/2))
+			} else {
+				new_dim = max(dim1, (i-1)-(l/2))
+			}
+
+			// avoid 0-count boxes
+
+			for partialSum[new_dim] == 0 {
+				new_dim++
+			}
+
+			count2 := lookAheadSum[new_dim]
+
+			for !(count2 == 0 && partialSum[new_dim-1] == 0) {
+				new_dim--
+				count2 = lookAheadSum[new_dim]
+			}
+
+			// set dimensions
+
+			if br {
+				vbox1.r2 = new_dim
+				vbox2.r1 = vbox1.r2 + 1
+			} else if bg {
+				vbox1.g2 = new_dim
+				vbox2.g1 = vbox1.g2 + 1
+			} else {
+				vbox1.b2 = new_dim
+				vbox2.b1 = vbox1.b2 + 1
+			}
+
+			return vbox1, vbox2, 2
+		}
+	}
+
+	return vbox1, vbox2, 0
 }
 
 func computeVBox(pixels []Pixel, histogram map[int]int) VBox {
