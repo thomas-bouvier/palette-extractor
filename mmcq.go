@@ -10,6 +10,7 @@ import (
 const BITSIG = 5
 const RSHIFT = 8 - BITSIG
 const ITMAX = 1000
+const FRACTPOPULATION = 0.75
 
 func quantize(pixels []Pixel, count int) {
 	if count < 2 || count > 256 {
@@ -30,19 +31,38 @@ func quantize(pixels []Pixel, count int) {
 
 	heap.Init(&vboxes)
 
-	doQuantizeIteration(&vboxes)
+	doQuantizeIteration(&vboxes, &histogram, float32(count)*FRACTPOPULATION)
 }
 
-func doQuantizeIteration(vboxes *VBoxes) {
+func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32) {
+	nbColor := 1
 	it := 0
 
 	for it < ITMAX {
-		if vboxes.Len() > 0 {
-			vbox := heap.Pop(vboxes).(*VBox)
+		vbox := heap.Pop(vboxes).(*VBox)
+		fmt.Print(it)
 
-			if vbox.Count() == 0 {
-				fmt.Print("test")
-				heap.Push(vboxes, vbox)
+		if vbox.Count() == 0 {
+			heap.Push(vboxes, vbox)
+
+			it++
+			continue
+		}
+
+		// do the cut
+
+		vbox1, vbox2, count := applyMedianCut(vbox, histogram)
+
+		if count > 0 {
+			heap.Push(vboxes, vbox1)
+
+			if count > 1 {
+				heap.Push(vboxes, vbox2)
+				nbColor++
+			}
+
+			if float32(nbColor) >= target {
+				return
 			}
 		}
 
@@ -66,7 +86,7 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
+func applyMedianCut(vbox *VBox, histogram *map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
 	if vbox.Count() == 0 {
 		return vbox1, vbox2, 0
 	}
@@ -105,7 +125,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum[i] = total
+			partialSum = append(partialSum, total)
 		}
 
 		dim1 = vbox.r1
@@ -126,7 +146,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum[i] = total
+			partialSum = append(partialSum, total)
 		}
 
 		dim1 = vbox.g1
@@ -145,7 +165,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum[i] = total
+			partialSum = append(partialSum, total)
 		}
 
 		dim1 = vbox.b1
