@@ -7,6 +7,13 @@ type Pixel struct {
 	A int
 }
 
+type SortingStrategy int
+
+const (
+	Count SortingStrategy = iota
+	CountTimesVolume
+)
+
 type VBox struct {
 	r1, r2    int
 	g1, g2    int
@@ -16,7 +23,10 @@ type VBox struct {
 	index int
 }
 
-type VBoxes []*VBox
+type VBoxes struct {
+	boxes           []*VBox
+	sortingStrategy SortingStrategy
+}
 
 func (vbox *VBox) volume() int {
 	sub_r := vbox.r2 - vbox.r1
@@ -43,33 +53,40 @@ func (vbox *VBox) Count() int {
 }
 
 func (vboxes VBoxes) Len() int {
-	return len(vboxes)
+	return len(vboxes.boxes)
 }
 
 func (vboxes VBoxes) Less(i, j int) bool {
-	return vboxes[i].Count() < vboxes[j].Count()
+	switch vboxes.sortingStrategy {
+	case Count:
+		return vboxes.boxes[i].Count() < vboxes.boxes[j].Count()
+	case CountTimesVolume:
+		return vboxes.boxes[i].Count()*vboxes.boxes[i].volume() < vboxes.boxes[j].Count()*vboxes.boxes[j].volume()
+	default:
+		return vboxes.boxes[i].Count() < vboxes.boxes[j].Count()
+	}
 }
 
 func (vboxes VBoxes) Swap(i, j int) {
-	vboxes[i], vboxes[j] = vboxes[j], vboxes[i]
-	vboxes[i].index = i
-	vboxes[j].index = j
+	vboxes.boxes[i], vboxes.boxes[j] = vboxes.boxes[j], vboxes.boxes[i]
+	vboxes.boxes[i].index = i
+	vboxes.boxes[j].index = j
 }
 
 func (vboxes *VBoxes) Pop() interface{} {
 	old := *vboxes
-	n := len(old)
-	item := old[n-1]
+	n := len(old.boxes)
+	item := old.boxes[n-1]
 	item.index = -1
-	*vboxes = old[0 : n-1]
+	(*vboxes).boxes = old.boxes[0 : n-1]
 	return item
 }
 
 func (vboxes *VBoxes) Push(x interface{}) {
-	n := len(*vboxes)
+	n := len((*vboxes).boxes)
 	item := x.(*VBox)
 	item.index = n
-	*vboxes = append(*vboxes, item)
+	(*vboxes).boxes = append((*vboxes).boxes, item)
 }
 
 func min(x, y int) int {
