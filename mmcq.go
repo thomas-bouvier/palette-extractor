@@ -26,12 +26,20 @@ func quantize(pixels []Pixel, count int) {
 
 	vbox := computeVBox(pixels, histogram)
 
-	vboxes := make(VBoxes, 1)
-	vboxes[0] = &vbox
+	vboxes := VBoxes{make([]*VBox, 1), Count}
+	vboxes.boxes[0] = &vbox
 
 	heap.Init(&vboxes)
 
 	doQuantizeIteration(&vboxes, &histogram, float32(count)*FRACTPOPULATION)
+
+	vboxes2 := VBoxes{make([]*VBox, 0), CountTimesVolume}
+
+	for vboxes.Len() != 0 {
+		vboxes2.Push(heap.Pop(&vboxes))
+	}
+
+	doQuantizeIteration(&vboxes2, &histogram, float32(count-vboxes2.Len()))
 }
 
 func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32) {
@@ -40,7 +48,6 @@ func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32)
 
 	for it < ITMAX {
 		vbox := heap.Pop(vboxes).(*VBox)
-		fmt.Print(it)
 
 		if vbox.Count() == 0 {
 			heap.Push(vboxes, vbox)
@@ -54,10 +61,10 @@ func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32)
 		vbox1, vbox2, count := applyMedianCut(vbox, histogram)
 
 		if count > 0 {
-			heap.Push(vboxes, vbox1)
+			heap.Push(vboxes, &vbox1)
 
 			if count > 1 {
-				heap.Push(vboxes, vbox2)
+				heap.Push(vboxes, &vbox2)
 				nbColor++
 			}
 
@@ -97,9 +104,9 @@ func applyMedianCut(vbox *VBox, histogram *map[int]int) (vbox1 VBox, vbox2 VBox,
 		return *vbox, vbox2, 1
 	}
 
-	rw := vbox.r2 - vbox.r1
-	gw := vbox.g2 - vbox.g1
-	bw := vbox.b2 - vbox.b1
+	rw := vbox.r2 - vbox.r1 + 1
+	gw := vbox.g2 - vbox.g1 + 1
+	bw := vbox.b2 - vbox.b1 + 1
 
 	// finding the partial sum arrays along the selected axis
 
@@ -188,37 +195,38 @@ func applyMedianCut(vbox *VBox, histogram *map[int]int) (vbox1 VBox, vbox2 VBox,
 
 			l := i - dim1
 			r := dim2 - i
-			new_dim := 0
+			newDim := 0
 
 			if l <= r {
-				new_dim = min(dim2-1, i+(r/2))
+				newDim = min(dim2-1, i+(r/2))
 			} else {
-				new_dim = max(dim1, (i-1)-(l/2))
+				newDim = max(dim1, (i-1)-(l/2))
 			}
 
 			// avoid 0-count boxes
+			/*
+				for partialSum[newDim] == 0 {
+					newDim++
+				}
 
-			for partialSum[new_dim] == 0 {
-				new_dim++
-			}
+				count2 := lookAheadSum[newDim]
 
-			count2 := lookAheadSum[new_dim]
-
-			for !(count2 == 0 && partialSum[new_dim-1] == 0) {
-				new_dim--
-				count2 = lookAheadSum[new_dim]
-			}
+				for !(count2 == 0 && partialSum[newDim-1] == 0) {
+					newDim--
+					count2 = lookAheadSum[newDim]
+				}
+			*/
 
 			// set dimensions
 
 			if br {
-				vbox1.r2 = new_dim
+				vbox1.r2 = newDim
 				vbox2.r1 = vbox1.r2 + 1
 			} else if bg {
-				vbox1.g2 = new_dim
+				vbox1.g2 = newDim
 				vbox2.g1 = vbox1.g2 + 1
 			} else {
-				vbox1.b2 = new_dim
+				vbox1.b2 = newDim
 				vbox2.b1 = vbox1.b2 + 1
 			}
 
