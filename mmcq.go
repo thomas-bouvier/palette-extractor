@@ -12,7 +12,7 @@ const RSHIFT = 8 - BITSIG
 const ITMAX = 1000
 const FRACTPOPULATION = 0.75
 
-func quantize(pixels []Pixel, count int) {
+func quantize(pixels []Pixel, count int) CMap {
 	if count < 2 || count > 256 {
 		fmt.Fprintf(os.Stderr, "wrong number of max colors when quantize")
 		os.Exit(1)
@@ -28,18 +28,25 @@ func quantize(pixels []Pixel, count int) {
 
 	vboxes := VBoxes{make([]*VBox, 1), Count}
 	vboxes.boxes[0] = &vbox
-
 	heap.Init(&vboxes)
 
 	doQuantizeIteration(&vboxes, &histogram, float32(count)*FRACTPOPULATION)
 
 	vboxes2 := VBoxes{make([]*VBox, 0), CountTimesVolume}
+	heap.Init(&vboxes2)
 
-	for vboxes.Len() != 0 {
+	for vboxes.Len() > 0 {
 		vboxes2.Push(heap.Pop(&vboxes))
 	}
 
 	doQuantizeIteration(&vboxes2, &histogram, float32(count-vboxes2.Len()))
+
+	cmap := CMap{}
+	for vboxes2.Len() > 0 {
+		cmap.Push(heap.Pop(&vboxes2))
+	}
+
+	return cmap
 }
 
 func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32) {

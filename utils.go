@@ -59,6 +59,38 @@ func (vbox *VBox) Count() int {
 	return n
 }
 
+func (vbox *VBox) average() Pixel {
+	n := 0
+	mult := 1 << (8 - BITSIG)
+	pixel := Pixel{0, 0, 0, 255}
+
+	for i := vbox.r1; i <= vbox.r2; i++ {
+		for j := vbox.g1; j <= vbox.g2; j++ {
+			for k := vbox.b1; k <= vbox.b2; k++ {
+				if val, ok := vbox.histogram[getColorIndex(i, j, k)]; ok {
+					n += val
+
+					pixel.R += val*i*mult + val*i*mult/2
+					pixel.G += val*j*mult + val*j*mult/2
+					pixel.B += val*k*mult + val*k*mult/2
+				}
+			}
+		}
+	}
+
+	if n > 0 {
+		pixel.R /= n
+		pixel.G /= n
+		pixel.B /= n
+	} else {
+		pixel.R = mult * (vbox.r1 + vbox.r2 + 1) / 2
+		pixel.G = mult * (vbox.g1 + vbox.g2 + 1) / 2
+		pixel.B = mult * (vbox.b1 + vbox.b2 + 1) / 2
+	}
+
+	return pixel
+}
+
 func (vbox *VBox) Contains(pixel *Pixel) bool {
 	r := pixel.R >> RSHIFT
 	g := pixel.G >> RSHIFT
@@ -102,6 +134,12 @@ func (vboxes *VBoxes) Push(x interface{}) {
 	item := x.(*VBox)
 	item.index = n
 	(*vboxes).boxes = append((*vboxes).boxes, item)
+}
+
+func (cmap *CMap) Push(x interface{}) {
+	item := x.(*VBox)
+	cmap.vboxes.Push(item)
+	cmap.colors = append(cmap.colors, item.average())
 }
 
 func (cmap *CMap) Map(color Pixel) *Pixel {
