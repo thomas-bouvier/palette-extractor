@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"container/heap"
+	"math"
+)
 
 type Pixel struct {
 	R int
@@ -31,7 +34,7 @@ type VBoxes struct {
 }
 
 type CMap struct {
-	vboxes *VBoxes
+	vboxes VBoxes
 	colors []Pixel
 }
 
@@ -99,6 +102,12 @@ func (vbox *VBox) Contains(pixel *Pixel) bool {
 	return r >= vbox.r1 && r <= vbox.r2 && g >= vbox.g1 && g <= vbox.g2 && b >= vbox.b1 && b <= vbox.b2
 }
 
+func NewVBoxes(strategy SortingStrategy) *VBoxes {
+	vboxes := &VBoxes{make([]*VBox, 0), strategy}
+	heap.Init(vboxes)
+	return vboxes
+}
+
 func (vboxes VBoxes) Len() int {
 	return len(vboxes.boxes)
 }
@@ -136,10 +145,16 @@ func (vboxes *VBoxes) Push(x interface{}) {
 	(*vboxes).boxes = append((*vboxes).boxes, item)
 }
 
-func (cmap *CMap) Push(x interface{}) {
-	item := x.(*VBox)
-	cmap.vboxes.Push(item)
-	cmap.colors = append(cmap.colors, item.average())
+func NewCMap() *CMap {
+	cmap := &CMap{}
+	cmap.vboxes = VBoxes{make([]*VBox, 0), CountTimesVolume}
+	heap.Init(&cmap.vboxes)
+	return cmap
+}
+
+func (cmap *CMap) Push(vbox *VBox) {
+	cmap.vboxes.Push(vbox)
+	cmap.colors = append(cmap.colors, vbox.average())
 }
 
 func (cmap *CMap) Map(color Pixel) *Pixel {
