@@ -192,6 +192,16 @@ func (cmap *CMap) Len() int {
 	return cmap.vboxes.Len()
 }
 
+func (cmap *CMap) GetPalette() []Pixel {
+	var pixels []Pixel
+
+	for i := 0; i < cmap.Len(); i++ {
+		pixels = append(pixels, cmap.colors[i])
+	}
+
+	return pixels
+}
+
 func min(x, y int) int {
 	if x < y {
 		return x

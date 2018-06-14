@@ -18,20 +18,20 @@ func main() {
 
 	defer reader.Close()
 
-	pixels, err := getPixels(reader)
+	pixels, err := getPixels(reader, 10)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
 	}
 
-	getPalette(pixels, 10)
+	fmt.Print(getPalette(pixels, 10))
 }
 
-func getPalette(pixels []Pixel, count int) {
-	quantize(pixels, count)
+func getPalette(pixels []Pixel, count int) []Pixel {
+	return quantize(pixels, count).GetPalette()
 }
 
-func getPixels(file io.Reader) ([]Pixel, error) {
+func getPixels(file io.Reader, quality int) ([]Pixel, error) {
 	img, _, err := image.Decode(file)
 
 	if err != nil {
@@ -42,14 +42,12 @@ func getPixels(file io.Reader) ([]Pixel, error) {
 	width, height := bounds.Max.X, bounds.Max.Y
 
 	var pixels []Pixel
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			pixel := rgbaToPixel(img.At(x, y).RGBA())
+	for i := 0; i < width*height; i += quality {
+		pixel := rgbaToPixel(img.At(i%width, i/width).RGBA())
 
-			if pixel.A >= 125 {
-				if !(pixel.R > 250 && pixel.G > 250 && pixel.B > 250) {
-					pixels = append(pixels, pixel)
-				}
+		if pixel.A >= 125 {
+			if !(pixel.R > 250 && pixel.G > 250 && pixel.B > 250) {
+				pixels = append(pixels, pixel)
 			}
 		}
 	}

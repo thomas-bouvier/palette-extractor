@@ -13,8 +13,13 @@ const ITMAX = 1000
 const FRACTPOPULATION = 0.75
 
 func quantize(pixels []Pixel, count int) *CMap {
+	if pixels == nil || len(pixels) == 0 {
+		fmt.Fprintf(os.Stderr, "empty pixels when quantizing")
+		os.Exit(1)
+	}
+
 	if count < 2 || count > 256 {
-		fmt.Fprintf(os.Stderr, "wrong number of max colors when quantize")
+		fmt.Fprintf(os.Stderr, "wrong number of max colors when quantizing")
 		os.Exit(1)
 	}
 
@@ -27,14 +32,14 @@ func quantize(pixels []Pixel, count int) *CMap {
 	vboxes := NewVBoxes(Count)
 	vboxes.Push(computeVBox(pixels, histogram))
 
-	doQuantizeIteration(vboxes, &histogram, float32(count)*FRACTPOPULATION)
+	doQuantizeIteration(vboxes, histogram, float32(count)*FRACTPOPULATION)
 
 	vboxes2 := NewVBoxes(CountTimesVolume)
 	for vboxes.Len() > 0 {
 		vboxes2.Push(heap.Pop(vboxes))
 	}
 
-	doQuantizeIteration(vboxes2, &histogram, float32(count-vboxes2.Len()))
+	doQuantizeIteration(vboxes2, histogram, float32(count-vboxes2.Len()))
 
 	cmap := NewCMap()
 
@@ -45,7 +50,7 @@ func quantize(pixels []Pixel, count int) *CMap {
 	return cmap
 }
 
-func doQuantizeIteration(vboxes *VBoxes, histogram *map[int]int, target float32) {
+func doQuantizeIteration(vboxes *VBoxes, histogram map[int]int, target float32) {
 	nbColor := 1
 	it := 0
 
@@ -96,7 +101,7 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *VBox, histogram *map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
+func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
 	if vbox.Count() == 0 {
 		return vbox1, vbox2, 0
 	}
@@ -128,7 +133,7 @@ func applyMedianCut(vbox *VBox, histogram *map[int]int) (vbox1 VBox, vbox2 VBox,
 
 			for j := vbox.g1; j <= vbox.g2; j++ {
 				for k := vbox.b1; k <= vbox.b2; k++ {
-					if val, ok := vbox.histogram[getColorIndex(i, j, k)]; ok {
+					if val, ok := histogram[getColorIndex(i, j, k)]; ok {
 						sum += val
 					}
 				}
