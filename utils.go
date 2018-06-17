@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"fmt"
 	"math"
 )
 
@@ -24,6 +25,7 @@ type VBox struct {
 	g1, g2    int
 	b1, b2    int
 	histogram map[int]int
+	color     *Pixel
 
 	index int
 }
@@ -35,15 +37,14 @@ type VBoxes struct {
 
 type CMap struct {
 	vboxes VBoxes
-	colors []Pixel
 }
 
 func (vbox *VBox) volume() int {
-	sub_r := vbox.r2 - vbox.r1
-	sub_g := vbox.g2 - vbox.g1
-	sub_b := vbox.b2 - vbox.b1
+	subr := vbox.r2 - vbox.r1
+	subg := vbox.g2 - vbox.g1
+	subb := vbox.b2 - vbox.b1
 
-	return (sub_r + 1) * (sub_g + 1) * (sub_b + 1)
+	return (subr + 1) * (subg + 1) * (subb + 1)
 }
 
 func (vbox *VBox) Count() int {
@@ -62,10 +63,29 @@ func (vbox *VBox) Count() int {
 	return n
 }
 
-func (vbox *VBox) average() Pixel {
+func (vbox *VBox) Copy() *VBox {
+	rvbox := &VBox{r1: vbox.r1, r2: vbox.r2, g1: vbox.g1, g2: vbox.g2, b1: vbox.b1, b2: vbox.b2}
+
+	rvbox.histogram = make(map[int]int, len(vbox.histogram))
+	for k, v := range vbox.histogram {
+		rvbox.histogram[k] = v
+	}
+
+	return rvbox
+}
+
+func (vbox *VBox) Print() {
+	fmt.Println(vbox)
+	fmt.Println(fmt.Sprintf("\tr1: %d, r2: %d", vbox.r1, vbox.r2))
+	fmt.Println(fmt.Sprintf("\tg1: %d, g2: %d", vbox.g1, vbox.g2))
+	fmt.Println(fmt.Sprintf("\tb1: %d, b2: %d", vbox.b1, vbox.b2))
+	fmt.Println(fmt.Sprintf("Count: %d", vbox.Count()))
+}
+
+func (vbox *VBox) average() *Pixel {
 	n := 0
 	mult := 1 << (8 - BITSIG)
-	pixel := Pixel{0, 0, 0, 255}
+	pixel := &Pixel{0, 0, 0, 255}
 
 	for i := vbox.r1; i <= vbox.r2; i++ {
 		for j := vbox.g1; j <= vbox.g2; j++ {
@@ -115,11 +135,11 @@ func (vboxes VBoxes) Len() int {
 func (vboxes VBoxes) Less(i, j int) bool {
 	switch vboxes.sortingStrategy {
 	case Count:
-		return vboxes.boxes[i].Count() < vboxes.boxes[j].Count()
+		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
 	case CountTimesVolume:
 		return vboxes.boxes[i].Count()*vboxes.boxes[i].volume() < vboxes.boxes[j].Count()*vboxes.boxes[j].volume()
 	default:
-		return vboxes.boxes[i].Count() < vboxes.boxes[j].Count()
+		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
 	}
 }
 
@@ -145,6 +165,13 @@ func (vboxes *VBoxes) Push(x interface{}) {
 	(*vboxes).boxes = append((*vboxes).boxes, item)
 }
 
+func (vboxes VBoxes) Print() {
+	fmt.Println(fmt.Sprintf("Len: %d", vboxes.Len()))
+	for i := 0; i < vboxes.Len(); i++ {
+		vboxes.boxes[i].Print()
+	}
+}
+
 func NewCMap() *CMap {
 	cmap := &CMap{}
 	cmap.vboxes = VBoxes{make([]*VBox, 0), CountTimesVolume}
@@ -153,35 +180,32 @@ func NewCMap() *CMap {
 }
 
 func (cmap *CMap) Push(vbox *VBox) {
+	vbox.color = vbox.average()
 	cmap.vboxes.Push(vbox)
-	cmap.colors = append(cmap.colors, vbox.average())
 }
 
-func (cmap *CMap) Map(color Pixel) *Pixel {
+func (cmap *CMap) Map(color *Pixel) *Pixel {
 	for i := 0; i < cmap.vboxes.Len(); i++ {
 		vbox := cmap.vboxes.boxes[i]
 
-		if vbox.Contains(&color) {
-			return &cmap.colors[i]
+		if vbox.Contains(color) {
+			return vbox.color
 		}
 	}
 
 	return cmap.nearest(color)
 }
 
-func (cmap *CMap) nearest(color Pixel) *Pixel {
+func (cmap *CMap) nearest(color *Pixel) *Pixel {
 	d1 := -10000.0
 	var ret *Pixel
 
 	for i := 0; i < cmap.vboxes.Len(); i++ {
-		d2 := math.Sqrt(
-			math.Pow(float64(color.R-cmap.colors[i].R), 2) +
-				math.Pow(float64(color.G-cmap.colors[i].G), 2) +
-				math.Pow(float64(color.B-cmap.colors[i].B), 2))
+		d2 := math.Sqrt(math.Pow(float64(color.R-cmap.vboxes.boxes[i].color.R), 2) + math.Pow(float64(color.G-cmap.vboxes.boxes[i].color.G), 2) + math.Pow(float64(color.B-cmap.vboxes.boxes[i].color.B), 2))
 
 		if d2 < d1 {
 			d1 = d2
-			ret = &cmap.colors[i]
+			ret = cmap.vboxes.boxes[i].color
 		}
 	}
 
@@ -196,7 +220,7 @@ func (cmap *CMap) GetPalette() []Pixel {
 	var pixels []Pixel
 
 	for i := 0; i < cmap.Len(); i++ {
-		pixels = append(pixels, cmap.colors[i])
+		pixels = append(pixels, *cmap.vboxes.boxes[i].color)
 	}
 
 	return pixels

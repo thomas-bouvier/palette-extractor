@@ -3,7 +3,6 @@ package main
 import (
 	"container/heap"
 	"fmt"
-	"github.com/jinzhu/copier"
 	"os"
 )
 
@@ -29,8 +28,10 @@ func quantize(pixels []Pixel, count int) *CMap {
 		os.Exit(1)
 	}
 
+	vbox := computeVBox(pixels, histogram)
+
 	vboxes := NewVBoxes(Count)
-	vboxes.Push(computeVBox(pixels, histogram))
+	vboxes.Push(vbox)
 
 	doQuantizeIteration(vboxes, histogram, float32(count)*FRACTPOPULATION)
 
@@ -42,7 +43,6 @@ func quantize(pixels []Pixel, count int) *CMap {
 	doQuantizeIteration(vboxes2, histogram, float32(count-vboxes2.Len()))
 
 	cmap := NewCMap()
-
 	for vboxes2.Len() > 0 {
 		cmap.Push(heap.Pop(vboxes2).(*VBox))
 	}
@@ -69,16 +69,16 @@ func doQuantizeIteration(vboxes *VBoxes, histogram map[int]int, target float32) 
 		vbox1, vbox2, count := applyMedianCut(vbox, histogram)
 
 		if count > 0 {
-			heap.Push(vboxes, &vbox1)
+			heap.Push(vboxes, vbox1)
 
 			if count > 1 {
-				heap.Push(vboxes, &vbox2)
+				heap.Push(vboxes, vbox2)
 				nbColor++
 			}
+		}
 
-			if float32(nbColor) >= target {
-				return
-			}
+		if float32(nbColor) >= target {
+			return
 		}
 
 		it++
@@ -101,7 +101,7 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, count int) {
+func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 *VBox, vbox2 *VBox, count int) {
 	if vbox.Count() == 0 {
 		return vbox1, vbox2, 0
 	}
@@ -109,7 +109,8 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 	// only one pixel, no split
 
 	if vbox.Count() == 1 {
-		return *vbox, vbox2, 1
+		vbox1 := vbox.Copy()
+		return vbox1, nil, 1
 	}
 
 	rw := vbox.r2 - vbox.r1 + 1
@@ -118,7 +119,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 
 	// finding the partial sum arrays along the selected axis
 
-	var partialSum []int
+	partialSum := make(map[int]int)
 	total := 0
 
 	dim1, dim2 := 0, 0
@@ -140,7 +141,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum = append(partialSum, total)
+			partialSum[i] = total
 		}
 
 		dim1 = vbox.r1
@@ -161,7 +162,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum = append(partialSum, total)
+			partialSum[i] = total
 		}
 
 		dim1 = vbox.g1
@@ -180,26 +181,24 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			total += sum
-			partialSum = append(partialSum, total)
+			partialSum[i] = total
 		}
 
 		dim1 = vbox.b1
 		dim2 = vbox.b2
 	}
 
-	lookAheadSum := make([]int, len(partialSum))
-
-	for i := 0; i < len(partialSum); i++ {
-		lookAheadSum[i] = total - partialSum[i]
+	lookAheadSum := make(map[int]int, len(partialSum))
+	for k, v := range partialSum {
+		lookAheadSum[k] = total - v
 	}
 
 	// determining the cut planes
 
 	for i := dim1; i <= dim2; i++ {
 		if partialSum[i] > total/2 {
-			vbox1, vbox2 := VBox{}, VBox{}
-			copier.Copy(&vbox1, vbox)
-			copier.Copy(&vbox2, vbox)
+			vbox1 := vbox.Copy()
+			vbox2 := vbox.Copy()
 
 			l := i - dim1
 			r := dim2 - i
@@ -212,18 +211,32 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 VBox, vbox2 VBox, 
 			}
 
 			// avoid 0-count boxes
-			/*
-				for partialSum[newDim] == 0 {
+
+			ko := true
+			for ko {
+				if _, ok := partialSum[newDim]; !ok {
 					newDim++
+				} else {
+					ko = false
 				}
+			}
 
-				count2 := lookAheadSum[newDim]
+			count2 := lookAheadSum[newDim]
 
-				for !(count2 == 0 && partialSum[newDim-1] == 0) {
+			ko = true
+			for ko {
+				if _, ok := partialSum[newDim-1]; !ok {
 					newDim--
 					count2 = lookAheadSum[newDim]
+				} else {
+					if count2 == 0 {
+						newDim--
+						count2 = lookAheadSum[newDim]
+					} else {
+						ko = false
+					}
 				}
-			*/
+			}
 
 			// set dimensions
 

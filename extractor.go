@@ -24,11 +24,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Print(getPalette(pixels, 10))
+	fmt.Print(getPalette(pixels, 6))
 }
 
 func getPalette(pixels []Pixel, count int) []Pixel {
-	return quantize(pixels, count).GetPalette()
+	cmap := quantize(pixels, count)
+	cmap.vboxes.Print()
+	return cmap.GetPalette()
 }
 
 func getPixels(file io.Reader, quality int) ([]Pixel, error) {
