@@ -93,9 +93,9 @@ func (vbox *VBox) average() *Pixel {
 				if val, ok := vbox.histogram[getColorIndex(i, j, k)]; ok {
 					n += val
 
-					pixel.R += val*i*mult + val*i*mult/2
-					pixel.G += val*j*mult + val*j*mult/2
-					pixel.B += val*k*mult + val*k*mult/2
+					pixel.R += val*i*mult + val*mult/2
+					pixel.G += val*j*mult + val*mult/2
+					pixel.B += val*k*mult + val*mult/2
 				}
 			}
 		}
@@ -137,7 +137,7 @@ func (vboxes VBoxes) Less(i, j int) bool {
 	case Count:
 		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
 	case CountTimesVolume:
-		return vboxes.boxes[i].Count()*vboxes.boxes[i].volume() < vboxes.boxes[j].Count()*vboxes.boxes[j].volume()
+		return vboxes.boxes[i].Count()*vboxes.boxes[i].volume() > vboxes.boxes[j].Count()*vboxes.boxes[j].volume()
 	default:
 		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
 	}
