@@ -44,18 +44,18 @@ func quantize(pixels []Pixel, count int) *CMap {
 
 	cmap := NewCMap()
 	for vboxes2.Len() > 0 {
-		cmap.Push(heap.Pop(vboxes2).(*VBox))
+		cmap.Push(heap.Pop(vboxes2).(*Box))
 	}
 
 	return cmap
 }
 
-func doQuantizeIteration(vboxes *VBoxes, histogram map[int]int, target float32) {
+func doQuantizeIteration(vboxes *PriorityQueue, histogram map[int]int, target float32) {
 	nbColor := 1
 	it := 0
 
 	for it < ITMAX {
-		vbox := heap.Pop(vboxes).(*VBox)
+		vbox := heap.Pop(vboxes).(*Box)
 
 		if vbox.Count() == 0 {
 			heap.Push(vboxes, vbox)
@@ -101,7 +101,7 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 *VBox, vbox2 *VBox, count int) {
+func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, count int) {
 	if vbox.Count() == 0 {
 		return vbox1, vbox2, 0
 	}
@@ -258,7 +258,7 @@ func applyMedianCut(vbox *VBox, histogram map[int]int) (vbox1 *VBox, vbox2 *VBox
 	return vbox1, vbox2, 0
 }
 
-func computeVBox(pixels []Pixel, histogram map[int]int) *VBox {
+func computeVBox(pixels []Pixel, histogram map[int]int) *Box {
 	rmin, rmax := int(^uint(0)>>1), 0
 	gmin, gmax := int(^uint(0)>>1), 0
 	bmin, bmax := int(^uint(0)>>1), 0
@@ -276,7 +276,7 @@ func computeVBox(pixels []Pixel, histogram map[int]int) *VBox {
 		bmax = max(b, bmax)
 	}
 
-	return &VBox{r1: rmin, r2: rmax, g1: gmin, g2: gmax, b1: bmin, b2: bmax, histogram: histogram}
+	return &Box{r1: rmin, r2: rmax, g1: gmin, g2: gmax, b1: bmin, b2: bmax, histogram: histogram}
 }
 
 func getColorIndex(r int, g int, b int) int {
