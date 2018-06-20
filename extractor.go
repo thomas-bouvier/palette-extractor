@@ -1,4 +1,4 @@
-package main
+package extractor
 
 import (
 	"fmt"
@@ -37,10 +37,22 @@ func NewExtractor(filename string, quality int) *Extractor {
 	return extractor
 }
 
-func (extractor *Extractor) GetPalette(count int) []Pixel {
-	return quantize(extractor.pixels, count).GetPalette()
+func (extractor *Extractor) GetPalette(count int) [][]int {
+	ret := make([][]int, count)
+	for i := range ret {
+		ret[i] = make([]int, 3)
+	}
+
+	pixels := quantize(extractor.pixels, count).GetPalette()
+	for i := 0; i < count; i++ {
+		ret[i][0] = pixels[i].R
+		ret[i][1] = pixels[i].G
+		ret[i][2] = pixels[i].B
+	}
+
+	return ret
 }
 
-func (extractor *Extractor) GetColor() Pixel {
+func (extractor *Extractor) GetColor() []int {
 	return extractor.GetPalette(5)[0]
 }
