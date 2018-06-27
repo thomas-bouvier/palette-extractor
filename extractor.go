@@ -2,8 +2,9 @@ package extractor
 
 import (
 	"fmt"
-	"image"
-	"image/png"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"os"
 )
 
@@ -15,8 +16,6 @@ type Extractor struct {
 
 func NewExtractor(filename string, quality int) *Extractor {
 	extractor := &Extractor{}
-
-	image.RegisterFormat("png", "png", png.Decode, png.DecodeConfig)
 
 	reader, err := os.Open(filename)
 	if err != nil {

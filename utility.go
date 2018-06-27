@@ -14,7 +14,6 @@ type Pixel struct {
 
 func getPixels(file io.Reader, quality int) ([]Pixel, error) {
 	img, _, err := image.Decode(file)
-
 	if err != nil {
 		return nil, err
 	}
