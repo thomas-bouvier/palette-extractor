@@ -21,10 +21,12 @@ func main() {
 	// Creating the extractor object
 	extractor := extractor.NewExtractor("image.png", 10)
 
-    // Displaying the top 5 dominant colors of the image
+	// Displaying the top 5 dominant colors of the image
 	fmt.Println(extractor.GetPalette(5))
 }
 ```
+
+You can find [the complete documentation](https://godoc.org/github.com/thomas-bouvier/palette-extractor) on GoDoc.
 
 ## Example
 

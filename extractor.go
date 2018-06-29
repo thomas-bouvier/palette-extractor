@@ -10,19 +10,20 @@ import (
 	"os"
 )
 
-type extractor struct {
+// Extractor represents the color palette extractor instance associated with a single image.
+type Extractor struct {
 	filename string
 	quality  int
 	pixels   []pixel
 }
 
-// NewExtractor returns a new instance of an extractor.
+// NewExtractor returns a new instance of an Extractor.
 // The provider filename parameter can contain a path, and must include the file extension.
 // The provided quality parameter behaves in the following manner:
 // the bigger the number, the faster a color will be returned but the greater the likelihood
 // that it will not be the visually most dominant color. 1 then refers the highest quality.
-func NewExtractor(filename string, quality int) *extractor {
-	extractor := &extractor{}
+func NewExtractor(filename string, quality int) *Extractor {
+	extractor := &Extractor{}
 
 	reader, err := os.Open(filename)
 	if err != nil {
@@ -46,7 +47,8 @@ func NewExtractor(filename string, quality int) *extractor {
 // GetPalette builds a color palette.
 // We are using the median cut algorithm to cluster similar colors.
 // The provided count parameter defines how many colors should be extracted.
-func (extractor *extractor) GetPalette(count int) [][]int {
+// Each color is returned as [r g b].
+func (extractor *Extractor) GetPalette(count int) [][]int {
 	ret := make([][]int, count)
 	for i := range ret {
 		ret[i] = make([]int, 3)
@@ -64,6 +66,7 @@ func (extractor *extractor) GetPalette(count int) [][]int {
 
 // GetColor selects the dominant color.
 // It corresponds to the first color in the palette.
-func (extractor *extractor) GetColor() []int {
+// The color is returned as [r g b].
+func (extractor *Extractor) GetColor() []int {
 	return extractor.GetPalette(5)[0]
 }
