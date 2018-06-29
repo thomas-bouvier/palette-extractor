@@ -11,7 +11,7 @@ import (
 type Extractor struct {
 	filename string
 	quality  int
-	pixels   []Pixel
+	pixels   []pixel
 }
 
 func NewExtractor(filename string, quality int) *Extractor {
@@ -42,7 +42,7 @@ func (extractor *Extractor) GetPalette(count int) [][]int {
 		ret[i] = make([]int, 3)
 	}
 
-	pixels := quantize(extractor.pixels, count).GetPalette()
+	pixels := quantize(extractor.pixels, count).getPalette()
 	for i := 0; i < count; i++ {
 		ret[i][0] = pixels[i].R
 		ret[i][1] = pixels[i].G

@@ -1,18 +1,24 @@
 package extractor
 
-import "fmt"
+import (
+	"fmt"
+)
 
-type Box struct {
+type box struct {
 	r1, r2    int
 	g1, g2    int
 	b1, b2    int
 	histogram map[int]int
-	color     *Pixel
+	color     *pixel
 
 	index int
 }
 
-func (box *Box) volume() int {
+func newBox(r1 int, r2 int, g1 int, g2 int, b1 int, b2 int) *box {
+	return &box{r1: r1, r2: r2, g1: g1, g2: g2, b1: b1, b2: b2}
+}
+
+func (box *box) volume() int {
 	subr := box.r2 - box.r1
 	subg := box.g2 - box.g1
 	subb := box.b2 - box.b1
@@ -20,7 +26,7 @@ func (box *Box) volume() int {
 	return (subr + 1) * (subg + 1) * (subb + 1)
 }
 
-func (box *Box) Count() int {
+func (box *box) count() int {
 	n := 0
 
 	for i := box.r1; i <= box.r2; i++ {
@@ -36,21 +42,21 @@ func (box *Box) Count() int {
 	return n
 }
 
-func (box *Box) Copy() *Box {
-	rvbox := &Box{r1: box.r1, r2: box.r2, g1: box.g1, g2: box.g2, b1: box.b1, b2: box.b2}
+func (box *box) copy() *box {
+	rbox := newBox(box.r1, box.r2, box.g1, box.g2, box.b1, box.b2)
 
-	rvbox.histogram = make(map[int]int, len(box.histogram))
+	rbox.histogram = make(map[int]int, len(box.histogram))
 	for k, v := range box.histogram {
-		rvbox.histogram[k] = v
+		rbox.histogram[k] = v
 	}
 
-	return rvbox
+	return rbox
 }
 
-func (box *Box) average() *Pixel {
+func (box *box) average() *pixel {
 	n := 0
-	mult := 1 << (8 - BITSIG)
-	pixel := &Pixel{0, 0, 0, 255}
+	mult := 1 << (8 - bitsig)
+	pixel := &pixel{0, 0, 0, 255}
 
 	for i := box.r1; i <= box.r2; i++ {
 		for j := box.g1; j <= box.g2; j++ {
@@ -79,18 +85,18 @@ func (box *Box) average() *Pixel {
 	return pixel
 }
 
-func (box *Box) Contains(pixel *Pixel) bool {
-	r := pixel.R >> RSHIFT
-	g := pixel.G >> RSHIFT
-	b := pixel.B >> RSHIFT
+func (box *box) contains(pixel *pixel) bool {
+	r := pixel.R >> rshift
+	g := pixel.G >> rshift
+	b := pixel.B >> rshift
 
 	return r >= box.r1 && r <= box.r2 && g >= box.g1 && g <= box.g2 && b >= box.b1 && b <= box.b2
 }
 
-func (box *Box) Print() {
+func (box *box) print() {
 	fmt.Println(box)
 	fmt.Println(fmt.Sprintf("\tr1: %d, r2: %d", box.r1, box.r2))
 	fmt.Println(fmt.Sprintf("\tg1: %d, g2: %d", box.g1, box.g2))
 	fmt.Println(fmt.Sprintf("\tb1: %d, b2: %d", box.b1, box.b2))
-	fmt.Println(fmt.Sprintf("Count: %d", box.Count()))
+	fmt.Println(fmt.Sprintf("Count: %d", box.count()))
 }

@@ -6,12 +6,12 @@ import (
 	"os"
 )
 
-const BITSIG = 5
-const RSHIFT = 8 - BITSIG
-const ITMAX = 1000
-const FRACTPOPULATION = 0.75
+const bitsig = 5
+const rshift = 8 - bitsig
+const itmax = 1000
+const fractpopulation = 0.75
 
-func quantize(pixels []Pixel, count int) *CMap {
+func quantize(pixels []pixel, count int) *colorMap {
 	if pixels == nil || len(pixels) == 0 {
 		fmt.Fprintf(os.Stderr, "empty pixels when quantizing")
 		os.Exit(1)
@@ -28,37 +28,35 @@ func quantize(pixels []Pixel, count int) *CMap {
 		os.Exit(1)
 	}
 
-	vbox := computeVBox(pixels, histogram)
+	boxes := newBoxes(Count)
+	boxes.Push(computeBox(pixels, histogram))
 
-	vboxes := NewVBoxes(Count)
-	vboxes.Push(vbox)
+	doQuantizeIteration(boxes, histogram, float32(count)*fractpopulation)
 
-	doQuantizeIteration(vboxes, histogram, float32(count)*FRACTPOPULATION)
-
-	vboxes2 := NewVBoxes(CountTimesVolume)
-	for vboxes.Len() > 0 {
-		vboxes2.Push(heap.Pop(vboxes))
+	boxes2 := newBoxes(CountTimesVolume)
+	for boxes.Len() > 0 {
+		boxes2.Push(heap.Pop(boxes))
 	}
 
-	doQuantizeIteration(vboxes2, histogram, float32(count-vboxes2.Len()))
+	doQuantizeIteration(boxes2, histogram, float32(count-boxes2.Len()))
 
-	cmap := NewCMap()
-	for vboxes2.Len() > 0 {
-		cmap.Push(heap.Pop(vboxes2).(*Box))
+	colorMap := newColorMap()
+	for boxes2.Len() > 0 {
+		colorMap.push(heap.Pop(boxes2).(*box))
 	}
 
-	return cmap
+	return colorMap
 }
 
-func doQuantizeIteration(vboxes *PriorityQueue, histogram map[int]int, target float32) {
+func doQuantizeIteration(boxes *priorityQueue, histogram map[int]int, target float32) {
 	nbColor := 1
 	it := 0
 
-	for it < ITMAX {
-		vbox := heap.Pop(vboxes).(*Box)
+	for it < itmax {
+		box := heap.Pop(boxes).(*box)
 
-		if vbox.Count() == 0 {
-			heap.Push(vboxes, vbox)
+		if box.count() == 0 {
+			heap.Push(boxes, box)
 
 			it++
 			continue
@@ -66,13 +64,13 @@ func doQuantizeIteration(vboxes *PriorityQueue, histogram map[int]int, target fl
 
 		// do the cut
 
-		vbox1, vbox2, count := applyMedianCut(vbox, histogram)
+		box1, box2, count := applyMedianCut(box, histogram)
 
 		if count > 0 {
-			heap.Push(vboxes, vbox1)
+			heap.Push(boxes, box1)
 
 			if count > 1 {
-				heap.Push(vboxes, vbox2)
+				heap.Push(boxes, box2)
 				nbColor++
 			}
 		}
@@ -85,12 +83,12 @@ func doQuantizeIteration(vboxes *PriorityQueue, histogram map[int]int, target fl
 	}
 }
 
-func computeHistogram(pixels []Pixel) map[int]int {
+func computeHistogram(pixels []pixel) map[int]int {
 	var index int
 	histogram := make(map[int]int)
 
 	for _, pixel := range pixels {
-		index = getColorIndex(pixel.R>>RSHIFT, pixel.G>>RSHIFT, pixel.B>>RSHIFT)
+		index = getColorIndex(pixel.R>>rshift, pixel.G>>rshift, pixel.B>>rshift)
 		if val, ok := histogram[index]; ok {
 			histogram[index] = val + 1
 		} else {
@@ -101,21 +99,21 @@ func computeHistogram(pixels []Pixel) map[int]int {
 	return histogram
 }
 
-func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, count int) {
-	if vbox.Count() == 0 {
-		return vbox1, vbox2, 0
+func applyMedianCut(box *box, histogram map[int]int) (box1 *box, box2 *box, count int) {
+	if box.count() == 0 {
+		return box1, box2, 0
 	}
 
 	// only one pixel, no split
 
-	if vbox.Count() == 1 {
-		vbox1 := vbox.Copy()
-		return vbox1, nil, 1
+	if box.count() == 1 {
+		box1 := box.copy()
+		return box1, nil, 1
 	}
 
-	rw := vbox.r2 - vbox.r1 + 1
-	gw := vbox.g2 - vbox.g1 + 1
-	bw := vbox.b2 - vbox.b1 + 1
+	rw := box.r2 - box.r1 + 1
+	gw := box.g2 - box.g1 + 1
+	bw := box.b2 - box.b1 + 1
 
 	// finding the partial sum arrays along the selected axis
 
@@ -129,11 +127,11 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 	case rw:
 		br = true
 
-		for i := vbox.r1; i <= vbox.r2; i++ {
+		for i := box.r1; i <= box.r2; i++ {
 			sum := 0
 
-			for j := vbox.g1; j <= vbox.g2; j++ {
-				for k := vbox.b1; k <= vbox.b2; k++ {
+			for j := box.g1; j <= box.g2; j++ {
+				for k := box.b1; k <= box.b2; k++ {
 					if val, ok := histogram[getColorIndex(i, j, k)]; ok {
 						sum += val
 					}
@@ -144,18 +142,18 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 			partialSum[i] = total
 		}
 
-		dim1 = vbox.r1
-		dim2 = vbox.r2
+		dim1 = box.r1
+		dim2 = box.r2
 
 	case gw:
 		bg = true
 
-		for i := vbox.g1; i <= vbox.g2; i++ {
+		for i := box.g1; i <= box.g2; i++ {
 			sum := 0
 
-			for j := vbox.r1; j <= vbox.r2; j++ {
-				for k := vbox.b1; k <= vbox.b2; k++ {
-					if val, ok := vbox.histogram[getColorIndex(j, i, k)]; ok {
+			for j := box.r1; j <= box.r2; j++ {
+				for k := box.b1; k <= box.b2; k++ {
+					if val, ok := box.histogram[getColorIndex(j, i, k)]; ok {
 						sum += val
 					}
 				}
@@ -165,16 +163,16 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 			partialSum[i] = total
 		}
 
-		dim1 = vbox.g1
-		dim2 = vbox.g2
+		dim1 = box.g1
+		dim2 = box.g2
 
 	default:
-		for i := vbox.b1; i <= vbox.b2; i++ {
+		for i := box.b1; i <= box.b2; i++ {
 			sum := 0
 
-			for j := vbox.r1; j <= vbox.r2; j++ {
-				for k := vbox.g1; k <= vbox.g2; k++ {
-					if val, ok := vbox.histogram[getColorIndex(j, k, i)]; ok {
+			for j := box.r1; j <= box.r2; j++ {
+				for k := box.g1; k <= box.g2; k++ {
+					if val, ok := box.histogram[getColorIndex(j, k, i)]; ok {
 						sum += val
 					}
 				}
@@ -184,8 +182,8 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 			partialSum[i] = total
 		}
 
-		dim1 = vbox.b1
-		dim2 = vbox.b2
+		dim1 = box.b1
+		dim2 = box.b2
 	}
 
 	lookAheadSum := make(map[int]int, len(partialSum))
@@ -197,8 +195,8 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 
 	for i := dim1; i <= dim2; i++ {
 		if partialSum[i] > total/2 {
-			vbox1 := vbox.Copy()
-			vbox2 := vbox.Copy()
+			box1 := box.copy()
+			box2 := box.copy()
 
 			l := i - dim1
 			r := dim2 - i
@@ -241,32 +239,32 @@ func applyMedianCut(vbox *Box, histogram map[int]int) (vbox1 *Box, vbox2 *Box, c
 			// set dimensions
 
 			if br {
-				vbox1.r2 = newDim
-				vbox2.r1 = vbox1.r2 + 1
+				box1.r2 = newDim
+				box2.r1 = box1.r2 + 1
 			} else if bg {
-				vbox1.g2 = newDim
-				vbox2.g1 = vbox1.g2 + 1
+				box1.g2 = newDim
+				box2.g1 = box1.g2 + 1
 			} else {
-				vbox1.b2 = newDim
-				vbox2.b1 = vbox1.b2 + 1
+				box1.b2 = newDim
+				box2.b1 = box1.b2 + 1
 			}
 
-			return vbox1, vbox2, 2
+			return box1, box2, 2
 		}
 	}
 
-	return vbox1, vbox2, 0
+	return box1, box2, 0
 }
 
-func computeVBox(pixels []Pixel, histogram map[int]int) *Box {
+func computeBox(pixels []pixel, histogram map[int]int) *box {
 	rmin, rmax := int(^uint(0)>>1), 0
 	gmin, gmax := int(^uint(0)>>1), 0
 	bmin, bmax := int(^uint(0)>>1), 0
 
 	for _, pixel := range pixels {
-		r := pixel.R >> RSHIFT
-		g := pixel.G >> RSHIFT
-		b := pixel.B >> RSHIFT
+		r := pixel.R >> rshift
+		g := pixel.G >> rshift
+		b := pixel.B >> rshift
 
 		rmin = min(r, rmin)
 		rmax = max(r, rmax)
@@ -276,9 +274,9 @@ func computeVBox(pixels []Pixel, histogram map[int]int) *Box {
 		bmax = max(b, bmax)
 	}
 
-	return &Box{r1: rmin, r2: rmax, g1: gmin, g2: gmax, b1: bmin, b2: bmax, histogram: histogram}
+	return &box{r1: rmin, r2: rmax, g1: gmin, g2: gmax, b1: bmin, b2: bmax, histogram: histogram}
 }
 
 func getColorIndex(r int, g int, b int) int {
-	return r<<(BITSIG*2) + g<<BITSIG + b
+	return r<<(bitsig*2) + g<<bitsig + b
 }

@@ -5,64 +5,64 @@ import (
 	"fmt"
 )
 
-type SortingStrategy int
+type sortingStrategy int
 
 const (
-	Count SortingStrategy = iota
+	Count sortingStrategy = iota
 	CountTimesVolume
 )
 
-type PriorityQueue struct {
-	boxes           []*Box
-	sortingStrategy SortingStrategy
+type priorityQueue struct {
+	boxes           []*box
+	sortingStrategy sortingStrategy
 }
 
-func NewVBoxes(strategy SortingStrategy) *PriorityQueue {
-	vboxes := &PriorityQueue{make([]*Box, 0), strategy}
-	heap.Init(vboxes)
-	return vboxes
+func newBoxes(strategy sortingStrategy) *priorityQueue {
+	boxes := &priorityQueue{make([]*box, 0), strategy}
+	heap.Init(boxes)
+	return boxes
 }
 
-func (vboxes PriorityQueue) Len() int {
-	return len(vboxes.boxes)
+func (boxes priorityQueue) Len() int {
+	return len(boxes.boxes)
 }
 
-func (vboxes PriorityQueue) Less(i, j int) bool {
-	switch vboxes.sortingStrategy {
+func (boxes priorityQueue) Less(i, j int) bool {
+	switch boxes.sortingStrategy {
 	case Count:
-		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
+		return boxes.boxes[i].count() > boxes.boxes[j].count()
 	case CountTimesVolume:
-		return vboxes.boxes[i].Count()*vboxes.boxes[i].volume() > vboxes.boxes[j].Count()*vboxes.boxes[j].volume()
+		return boxes.boxes[i].count()*boxes.boxes[i].volume() > boxes.boxes[j].count()*boxes.boxes[j].volume()
 	default:
-		return vboxes.boxes[i].Count() > vboxes.boxes[j].Count()
+		return boxes.boxes[i].count() > boxes.boxes[j].count()
 	}
 }
 
-func (vboxes PriorityQueue) Swap(i, j int) {
-	vboxes.boxes[i], vboxes.boxes[j] = vboxes.boxes[j], vboxes.boxes[i]
-	vboxes.boxes[i].index = i
-	vboxes.boxes[j].index = j
+func (boxes priorityQueue) Swap(i, j int) {
+	boxes.boxes[i], boxes.boxes[j] = boxes.boxes[j], boxes.boxes[i]
+	boxes.boxes[i].index = i
+	boxes.boxes[j].index = j
 }
 
-func (vboxes *PriorityQueue) Pop() interface{} {
-	old := *vboxes
+func (boxes *priorityQueue) Pop() interface{} {
+	old := *boxes
 	n := len(old.boxes)
 	item := old.boxes[n-1]
 	item.index = -1
-	(*vboxes).boxes = old.boxes[0 : n-1]
+	(*boxes).boxes = old.boxes[0 : n-1]
 	return item
 }
 
-func (vboxes *PriorityQueue) Push(x interface{}) {
-	n := len((*vboxes).boxes)
-	item := x.(*Box)
+func (boxes *priorityQueue) Push(x interface{}) {
+	n := len((*boxes).boxes)
+	item := x.(*box)
 	item.index = n
-	(*vboxes).boxes = append((*vboxes).boxes, item)
+	(*boxes).boxes = append((*boxes).boxes, item)
 }
 
-func (vboxes PriorityQueue) Print() {
-	fmt.Println(fmt.Sprintf("Len: %d", vboxes.Len()))
-	for i := 0; i < vboxes.Len(); i++ {
-		vboxes.boxes[i].Print()
+func (boxes priorityQueue) print() {
+	fmt.Println(fmt.Sprintf("Len: %d", boxes.Len()))
+	for i := 0; i < boxes.Len(); i++ {
+		boxes.boxes[i].print()
 	}
 }

@@ -5,59 +5,59 @@ import (
 	"math"
 )
 
-type CMap struct {
-	boxes PriorityQueue
+type colorMap struct {
+	boxes priorityQueue
 }
 
-func NewCMap() *CMap {
-	cmap := &CMap{}
-	cmap.boxes = PriorityQueue{make([]*Box, 0), CountTimesVolume}
-	heap.Init(&cmap.boxes)
-	return cmap
+func newColorMap() *colorMap {
+	colorMap := &colorMap{}
+	colorMap.boxes = priorityQueue{make([]*box, 0), CountTimesVolume}
+	heap.Init(&colorMap.boxes)
+	return colorMap
 }
 
-func (cmap *CMap) Push(vbox *Box) {
+func (colorMap *colorMap) push(vbox *box) {
 	vbox.color = vbox.average()
-	cmap.boxes.Push(vbox)
+	colorMap.boxes.Push(vbox)
 }
 
-func (cmap *CMap) Map(color *Pixel) *Pixel {
-	for i := 0; i < cmap.boxes.Len(); i++ {
-		vbox := cmap.boxes.boxes[i]
+func (colorMap *colorMap) mapColor(color *pixel) *pixel {
+	for i := 0; i < colorMap.boxes.Len(); i++ {
+		box := colorMap.boxes.boxes[i]
 
-		if vbox.Contains(color) {
-			return vbox.color
+		if box.contains(color) {
+			return box.color
 		}
 	}
 
-	return cmap.nearest(color)
+	return colorMap.getNearestColor(color)
 }
 
-func (cmap *CMap) nearest(color *Pixel) *Pixel {
+func (colorMap *colorMap) getNearestColor(color *pixel) *pixel {
 	d1 := -10000.0
-	var ret *Pixel
+	var ret *pixel
 
-	for i := 0; i < cmap.boxes.Len(); i++ {
-		d2 := math.Sqrt(math.Pow(float64(color.R-cmap.boxes.boxes[i].color.R), 2) + math.Pow(float64(color.G-cmap.boxes.boxes[i].color.G), 2) + math.Pow(float64(color.B-cmap.boxes.boxes[i].color.B), 2))
+	for i := 0; i < colorMap.boxes.Len(); i++ {
+		d2 := math.Sqrt(math.Pow(float64(color.R-colorMap.boxes.boxes[i].color.R), 2) + math.Pow(float64(color.G-colorMap.boxes.boxes[i].color.G), 2) + math.Pow(float64(color.B-colorMap.boxes.boxes[i].color.B), 2))
 
 		if d2 < d1 {
 			d1 = d2
-			ret = cmap.boxes.boxes[i].color
+			ret = colorMap.boxes.boxes[i].color
 		}
 	}
 
 	return ret
 }
 
-func (cmap *CMap) Len() int {
-	return cmap.boxes.Len()
+func (colorMap *colorMap) len() int {
+	return colorMap.boxes.Len()
 }
 
-func (cmap *CMap) GetPalette() []Pixel {
-	var pixels []Pixel
+func (colorMap *colorMap) getPalette() []pixel {
+	var pixels []pixel
 
-	for i := 0; i < cmap.Len(); i++ {
-		pixels = append(pixels, *cmap.boxes.boxes[i].color)
+	for i := 0; i < colorMap.len(); i++ {
+		pixels = append(pixels, *colorMap.boxes.boxes[i].color)
 	}
 
 	return pixels
