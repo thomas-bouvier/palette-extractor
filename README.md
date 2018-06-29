@@ -1,5 +1,7 @@
 palette-extractor
 =================
+[![Go Report Card](https://goreportcard.com/badge/github.com/thomas-bouvier/palette-extractor)](https://goreportcard.com/report/thomas-bouvier/palette-extractor)
+[![GoDoc](https://godoc.org/github.com/thomas-bouvier/palette-extractor?status.svg)](https://godoc.org/github.com/thomas-bouvier/palette-extractor)
 
 This program extracts the dominant color or a representative color palette from an image.
 
