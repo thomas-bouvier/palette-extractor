@@ -11,7 +11,7 @@ type colorMap struct {
 
 func newColorMap() *colorMap {
 	colorMap := &colorMap{}
-	colorMap.boxes = priorityQueue{make([]*box, 0), CountTimesVolume}
+	colorMap.boxes = priorityQueue{make([]*box, 0), countTimesVolume}
 	heap.Init(&colorMap.boxes)
 	return colorMap
 }

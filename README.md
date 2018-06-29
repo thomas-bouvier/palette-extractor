@@ -1,7 +1,7 @@
 palette-extractor
 =================
 
-This program extracts the top `N` dominant colors from an image, where `N` can be set by the user.
+This program extracts the dominant color or a representative color palette from an image.
 
 ## Usage
 

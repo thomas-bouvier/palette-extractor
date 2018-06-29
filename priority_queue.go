@@ -8,8 +8,8 @@ import (
 type sortingStrategy int
 
 const (
-	Count sortingStrategy = iota
-	CountTimesVolume
+	count sortingStrategy = iota
+	countTimesVolume
 )
 
 type priorityQueue struct {
@@ -29,9 +29,9 @@ func (boxes priorityQueue) Len() int {
 
 func (boxes priorityQueue) Less(i, j int) bool {
 	switch boxes.sortingStrategy {
-	case Count:
+	case count:
 		return boxes.boxes[i].count() > boxes.boxes[j].count()
-	case CountTimesVolume:
+	case countTimesVolume:
 		return boxes.boxes[i].count()*boxes.boxes[i].volume() > boxes.boxes[j].count()*boxes.boxes[j].volume()
 	default:
 		return boxes.boxes[i].count() > boxes.boxes[j].count()

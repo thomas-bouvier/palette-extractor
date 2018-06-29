@@ -11,34 +11,34 @@ const rshift = 8 - bitsig
 const itmax = 1000
 const fractpopulation = 0.75
 
-func quantize(pixels []pixel, count int) *colorMap {
+func quantize(pixels []pixel, maxColor int) *colorMap {
 	if pixels == nil || len(pixels) == 0 {
 		fmt.Fprintf(os.Stderr, "empty pixels when quantizing")
 		os.Exit(1)
 	}
 
-	if count < 2 || count > 256 {
+	if maxColor < 2 || maxColor > 256 {
 		fmt.Fprintf(os.Stderr, "wrong number of max colors when quantizing")
 		os.Exit(1)
 	}
 
 	histogram := computeHistogram(pixels)
-	if len(histogram) <= count {
+	if len(histogram) <= maxColor {
 		fmt.Fprintf(os.Stderr, "insufficient number of levels of quantification")
 		os.Exit(1)
 	}
 
-	boxes := newBoxes(Count)
+	boxes := newBoxes(count)
 	boxes.Push(computeBox(pixels, histogram))
 
-	doQuantizeIteration(boxes, histogram, float32(count)*fractpopulation)
+	doQuantizeIteration(boxes, histogram, float32(maxColor)*fractpopulation)
 
-	boxes2 := newBoxes(CountTimesVolume)
+	boxes2 := newBoxes(countTimesVolume)
 	for boxes.Len() > 0 {
 		boxes2.Push(heap.Pop(boxes))
 	}
 
-	doQuantizeIteration(boxes2, histogram, float32(count-boxes2.Len()))
+	doQuantizeIteration(boxes2, histogram, float32(maxColor-boxes2.Len()))
 
 	colorMap := newColorMap()
 	for boxes2.Len() > 0 {
